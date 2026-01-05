@@ -57,10 +57,10 @@ export async function POST(request: NextRequest) {
               }
 
               // Categorize document
-              let { category, subcategory } = categorizeDocument(fileName);
-              if (categoryOverride && category === "Other") {
-                category = categoryOverride;
-              }
+              const { category: detectedCategory, subcategory } = categorizeDocument(fileName);
+              const category = (categoryOverride && detectedCategory === "Other")
+                ? categoryOverride
+                : detectedCategory;
               const revision = extractRevision(fileName);
 
               // Create document record
