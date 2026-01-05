@@ -1,0 +1,185 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Projet principal - Centre Culturel et Artistique Kahnawake
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      String   @default("active") // active, completed, on-hold
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  budget      Float?
+  location    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents   Document[]
+  tasks       Task[]
+  milestones  Milestone[]
+  teams       Team[]
+  categories  Category[]
+}
+
+// Documents/Plans PDF
+model Document {
+  id           String   @id @default(cuid())
+  name         String
+  fileName     String
+  filePath     String
+  fileSize     Int
+  category     String   // Architecture, Civil, Electrical, etc.
+  subcategory  String?  // Floor Plans, Elevations, Details, etc.
+  revision     String?
+  description  String?
+  extractedText String? // Texte extrait du PDF pour recherche IA
+  metadata     String?  // JSON metadata
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  annotations Annotation[]
+  comments    Comment[]
+
+  @@index([category])
+  @@index([projectId])
+}
+
+// Catégories de documents
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  count       Int      @default(0)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([name, projectId])
+}
+
+// Tâches du projet
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("todo") // todo, in_progress, review, completed
+  priority    String   @default("medium") // low, medium, high, urgent
+  dueDate     DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+  assigneeId  String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  parentId    String?
+  parent      Task?    @relation("SubTasks", fields: [parentId], references: [id])
+  subtasks    Task[]   @relation("SubTasks")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  comments    Comment[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+// Jalons du projet
+model Milestone {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  dueDate     DateTime
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// Équipes
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  role        String?  // Architecture, Engineering, etc.
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  members     TeamMember[]
+  createdAt   DateTime @default(now())
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  role      String?
+  avatar    String?
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// Annotations sur les documents
+model Annotation {
+  id         String   @id @default(cuid())
+  content    String
+  x          Float
+  y          Float
+  page       Int      @default(1)
+  color      String   @default("#ff0000")
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  authorName String?
+  createdAt  DateTime @default(now())
+
+  @@index([documentId])
+}
+
+// Commentaires
+model Comment {
+  id         String   @id @default(cuid())
+  content    String
+  authorName String
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id])
+  taskId     String?
+  task       Task?    @relation(fields: [taskId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([documentId])
+  @@index([taskId])
+}
+
+// Historique des recherches IA
+model SearchHistory {
+  id        String   @id @default(cuid())
+  query     String
+  results   String?  // JSON results
+  createdAt DateTime @default(now())
+}
+
+// Notifications
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("info") // info, warning, error, success
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([read])
+}
